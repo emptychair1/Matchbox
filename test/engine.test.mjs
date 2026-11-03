@@ -82,3 +82,29 @@ test('missing match is blocked and recorded', async () => {
   assert.equal((await box.dispatch('absent', null, {sessionId:'s'})).outcome.status, 'blocked');
   assert.equal(r.history.length,2);
 });
+
+test('undefined cannot be reported as a light even if verifier approves', async () => {
+  const r = recorder();
+  const box = createMatchbox({ matches: [match('empty', () => undefined, () => true)], recorder: r, dependencies: {} });
+  const result = await box.dispatch('empty', 'x', { sessionId: 's' });
+  assert.equal(result.outcome.status, 'dud');
+  assert.equal(r.history.at(-1).outcome.status, 'dud');
+});
+
+test('in-flight lease renewal must resolve before terminal light', async () => {
+  const r = recorder();
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  let renewalStarted;
+  const started = new Promise(resolve => { renewalStarted = resolve; });
+  r.renewLease = async () => { renewalStarted(); await gate; return false; };
+  const box = createMatchbox({
+    matches: [match('forge', async () => { await started; return 'sha'; })],
+    recorder:r, dependencies:{}, heartbeatIntervalMs:5
+  });
+  const ongoing = box.dispatch('forge', 'commit', { sessionId:'s' });
+  await started;
+  release();
+  await assert.rejects(ongoing, /outcome unknown/);
+  assert.equal(r.history.length, 1);
+});
