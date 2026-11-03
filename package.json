@@ -14,9 +14,10 @@
     "build": "tsc --noEmit false --declaration --outDir dist",
     "typecheck": "tsc --noEmit",
     "test": "npm run build && node --test",
-    "check": "npm run typecheck && npm test",
+    "check": "npm run typecheck && npm test && npm run verify:package",
     "prepack": "npm run check",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "verify:package": "node scripts/verify-release.mjs"
   },
   "devDependencies": {
     "typescript": "^5.8.3"
