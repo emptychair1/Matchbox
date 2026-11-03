@@ -15,7 +15,8 @@
     "typecheck": "tsc --noEmit",
     "test": "npm run build && node --test",
     "check": "npm run typecheck && npm test",
-    "prepack": "npm run check"
+    "prepack": "npm run check",
+    "prepare": "npm run build"
   },
   "devDependencies": {
     "typescript": "^5.8.3"
