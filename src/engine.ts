@@ -148,6 +148,11 @@ export function createMatchbox<Dependencies>(options: MatchboxOptions<Dependenci
           outcome = verified === true ? { status: 'light', value } : { status: 'dud', error: 'Result not verified' };
         }
       } catch (error) {
+        // Losing the lease is not proof of operation failure. Preserve the
+        // pending intent for the reconciler instead of recording a false dud.
+        if (leaseError) {
+          throw new Error(`Lease lost for ${strikeId}; underlying outcome unknown: ${errorMessage(leaseError)}`);
+        }
         outcome = { status: 'dud', error: errorMessage(error) };
       } finally {
         if (heartbeat !== undefined) clearInterval(heartbeat);
