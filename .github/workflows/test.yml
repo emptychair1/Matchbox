@@ -12,3 +12,7 @@ jobs:
           node-version: '22'
       - run: npm install --no-audit --no-fund
       - run: npm run check
+      - name: Verify public module exports
+        run: node --input-type=module -e "import('@matchbox-ai/core').then(m => { for (const x of ['createMatchbox','defineMatch','reconcileExpired']) if (typeof m[x] !== 'function') throw Error('Missing export '+x) })"
+      - name: Inspect package contents
+        run: npm pack --dry-run --ignore-scripts
