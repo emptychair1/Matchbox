@@ -44,8 +44,12 @@ const clock = defineMatch({
 // This is an example only. The host MUST implement these calls with
 // genuine durable, atomic storage before using consequential matches.
 const recorder = {
-  async createPending(record) { /* DURABLE INSERT, or throw */ },
-  async settle(id, outcome, durationMs) { /* ATOMIC pending-only UPDATE, or throw */ }
+  async createPending() {
+    throw new Error("Provide a durable recorder before enabling matches");
+  },
+  async settle() {
+    throw new Error("Provide an atomic terminal recorder");
+  }
 };
 
 const box = createMatchbox({
@@ -58,7 +62,7 @@ const result = await box.dispatch("clock", "UTC", { sessionId: "sample-session" 
 console.log(result.outcome);
 ```
 
-**Do not use the illustrative recorder above in production.** A promise that resolves without actually writing to durable storage defeats the safety contract.
+**This recorder deliberately fails closed.** Replace it with real durable and atomic storage before expecting a light. A promise that resolves without writing is a violation of the contract.
 
 ## Integration boundaries
 
