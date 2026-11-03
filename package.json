@@ -5,10 +5,14 @@
   "type": "module",
   "description": "Tiny provider-neutral capability execution framework",
   "exports": {
-    ".": "./src/index.js"
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
+    }
   },
   "scripts": {
-    "test": "node --test",
+    "build": "tsc --noEmit false --declaration --outDir dist",
+    "test": "npm run build && node --test",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm test"
   },
@@ -18,5 +22,6 @@
   "engines": {
     "node": ">=20"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "types": "./dist/src/index.d.ts"
 }
