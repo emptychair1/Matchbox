@@ -50,7 +50,7 @@ A bad schema or missing match is recorded as `blocked` without invoking match co
 - The optional logger is informational only; it is not the authoritative recorder.
 - Input summaries default to `[redacted]`; hosts must avoid writing sensitive input and errors into durable records.
 - Deadline timestamps are recorded but are **not yet enforced**. Lease/heartbeat management, expiration, and interrupted-state reconciliation belong to bite 3.
-- This package is still private pending bite 4 verification. No Cloudflare recorder adapter or production integration is included.
+- The v0.2.0 package manifest is public/installable from GitHub, but npm publishing has not occurred. No Cloudflare recorder adapter or production integration is included.
 
 
 ## Bite 3: reconciliation
@@ -58,3 +58,8 @@ A bad schema or missing match is recorded as `blocked` without invoking match co
 `reconcileExpired({ recorder, owner, now?, batchSize? })` scans expired pending records and requests atomic conditional transition to `interrupted`. Its `owner` identifies the host sweep; Calcifer must schedule sweeps. A timed-out strike is **unknown**, not failed. The storage adapter must implement `listExpiredPending`, `interruptIfExpired`, and atomic pending-only `settle`/`renewLease` operations. `renewLease` is an optional hook for long-running execution; Matchbox attempts heartbeats while the match is active. Terminal-recording conflicts can append `recordLateCompletion` evidence without replacing historical status. The recorder is responsible for preserving the event trail. No automatic operation retries occur.
 
 Deadline expiration is not an execution timeout: a match that ignores cancellation may continue running. Hosts must supply cancellable I/O, and durable adapters must prevent stale workers from overwriting interrupted records. In-process heartbeat timers are insufficient across Worker suspension or restarts; deployers must carefully design the lease policy.
+
+
+## Bite 4: package and verification boundaries
+
+The package exports compiled ESM and TypeScript declarations. GitHub installation uses `prepare` to build the package. CI runs type-checking, Node regression tests, an export smoke check, and `npm pack --dry-run`. Any green build proves only **contract and runtime-engine conformance in tests**, never that an external commit or other side effect happened. Publication and a production durable adapter require separate integration checks. `Matchbox` does not issue automatic retries for unknown outcomes.
