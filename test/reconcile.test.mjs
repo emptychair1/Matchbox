@@ -110,3 +110,20 @@ test('reconciler requires owner and refuses unsafe batch size', async () => {
   await assert.rejects(reconcileExpired({ recorder:r, owner:'' }), /owner/);
   await assert.rejects(reconcileExpired({ recorder:r, owner:'calcifer', batchSize:0 }), /batchSize/);
 });
+
+test('lost lease does not misreport unknown side effects as a dud', async () => {
+  const r = durableRecorder();
+  r.renewLease = async () => false;
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  const box = createMatchbox({
+    matches: [basicMatch('forge', async () => { await gate; return 'commit'; })],
+    recorder: r, dependencies: {}, heartbeatIntervalMs: 5
+  });
+  const ongoing = box.dispatch('forge', 'write', { sessionId: 's' });
+  await new Promise(resolve => setTimeout(resolve, 25));
+  release();
+  await assert.rejects(ongoing, /underlying outcome unknown/);
+  assert.equal([...r.rows.values()][0].status, 'pending');
+  assert.ok(!r.history.some(x => x.type === 'dud'));
+});
