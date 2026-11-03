@@ -119,13 +119,14 @@ export function createMatchbox<Dependencies>(options: MatchboxOptions<Dependenci
       let heartbeat: ReturnType<typeof setInterval> | undefined;
       let leaseError: Error | undefined;
       let renewalBusy = false;
+      let renewalPromise: Promise<void> | undefined;
       if (options.recorder.renewLease && !controller.signal.aborted) {
         const every = options.heartbeatIntervalMs ?? Math.max(1, Math.floor(timeoutMs / 3));
         heartbeat = setInterval(() => {
           if (renewalBusy || controller.signal.aborted) return;
           renewalBusy = true;
           const deadline = new Date(clock() + timeoutMs).toISOString();
-          void options.recorder.renewLease!(strikeId, deadline).then(ok => {
+          renewalPromise = options.recorder.renewLease!(strikeId, deadline).then(ok => {
             if (!ok) throw new Error('Strike lease lost');
           }).catch(error => {
             leaseError = new Error(`Lease renewal failed: ${errorMessage(error)}`);
@@ -145,7 +146,7 @@ export function createMatchbox<Dependencies>(options: MatchboxOptions<Dependenci
           if (leaseError || controller.signal.aborted) {
             throw leaseError ?? new Error('Verification aborted; outcome not confirmed');
           }
-          outcome = verified === true ? { status: 'light', value } : { status: 'dud', error: 'Result not verified' };
+          outcome = verified === true && value !== undefined ? { status: 'light', value } : { status: 'dud', error: 'Result not verified' };
         }
       } catch (error) {
         // Losing the lease is not proof of operation failure. Preserve the
@@ -158,6 +159,10 @@ export function createMatchbox<Dependencies>(options: MatchboxOptions<Dependenci
         if (heartbeat !== undefined) clearInterval(heartbeat);
         request.signal?.removeEventListener('abort', onAbort);
       }
+      // Resolve an already-started lease update before publishing a terminal result.
+      // Otherwise a delayed renewal rejection could arrive after a false light.
+      if (renewalPromise) await renewalPromise;
+      if (leaseError) throw new Error(`Lease lost for ${strikeId}; underlying outcome unknown: ${errorMessage(leaseError)}`);
     }
     const durationMs = clock() - started;
     try {
